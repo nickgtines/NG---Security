@@ -1,0 +1,47 @@
+{
+  "post": {
+    "summary": "Enrich an alert record",
+    "description": "Fills in the `enrichment` section of an Alert Record (schema v3) with IOC reputation (GreyNoise, AbuseIPDB, VirusTotal, urlscan), Okta user context and CrowdStrike host context, appends one trace entry, and returns the full record. Alternatively send {\"lookup\":{\"ioc\":\"...\"}} to look up one IOC.",
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["schema_version", "correlation_id", "alert", "trace"],
+            "properties": {
+              "schema_version": { "type": "string", "const": "3" },
+              "correlation_id": { "type": "string" },
+              "alert": {
+                "type": "object",
+                "required": ["id", "source"],
+                "properties": {
+                  "id": { "type": "string" },
+                  "source": { "type": "string", "enum": ["sentinel", "crowdstrike"] },
+                  "user": { "type": "object", "properties": { "upn": { "type": ["string", "null"] }, "display_name": { "type": ["string", "null"] } } },
+                  "host": { "type": "object", "properties": { "hostname": { "type": ["string", "null"] }, "device_id": { "type": ["string", "null"] }, "os": { "type": ["string", "null"] } } },
+                  "iocs": {
+                    "type": "object",
+                    "properties": {
+                      "ips": { "type": "array", "items": { "type": "string" } },
+                      "domains": { "type": "array", "items": { "type": "string" } },
+                      "urls": { "type": "array", "items": { "type": "string" } },
+                      "hashes": { "type": "array", "items": { "type": "object", "required": ["type", "value"], "properties": { "type": { "type": "string", "enum": ["md5", "sha1", "sha256"] }, "value": { "type": "string" } } } }
+                    }
+                  }
+                },
+                "additionalProperties": true
+              },
+              "trace": { "type": "array", "items": { "type": "object" } }
+            },
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": { "description": "The full alert record with `enrichment` filled in and one trace entry appended.", "content": { "application/json": { "schema": { "type": "object", "additionalProperties": true } } } },
+      "400": { "description": "Input doesn't match the alert record contract.", "content": { "application/json": { "schema": { "type": "object", "properties": { "error": { "type": "string" }, "message": { "type": "string" } } } } } }
+    }
+  }
+}

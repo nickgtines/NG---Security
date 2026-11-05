@@ -1,0 +1,6 @@
+color = "teal"
+route = "/enrich/test"
+route_auth = "space"
+route_type = "api"
+title = "Alert Enrichment test"
+links = ["Enrich"]

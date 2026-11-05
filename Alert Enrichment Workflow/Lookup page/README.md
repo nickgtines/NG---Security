@@ -1,0 +1,1 @@
+`/lookup` (space members): an analyst enters one IOC; its type is auto-detected and every applicable provider's normalized verdict is shown side by side, with the raw response expandable. Calls **Lookup API**, which reuses the same **Enrich** component (and cache) as the Orchestrator.

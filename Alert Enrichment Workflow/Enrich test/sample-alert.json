@@ -1,0 +1,37 @@
+{
+  "schema_version": "3",
+  "correlation_id": "00000000-0000-4000-8000-000000000000",
+  "alert": {
+    "id": "sample-alert-001",
+    "source": "sentinel",
+    "source_url": null,
+    "rule_name": "Suspicious sign-in followed by malware download",
+    "title": "Sample alert for Alert Enrichment",
+    "description": "Synthetic alert used to exercise every enrichment provider.",
+    "severity": "high",
+    "tactics": ["Initial Access"],
+    "techniques": ["T1078"],
+    "first_seen": "2026-11-05T12:00:00Z",
+    "last_seen": "2026-11-05T12:05:00Z",
+    "user": { "upn": "test.user@example.com", "display_name": "Test User" },
+    "host": { "hostname": "SAMPLE-WS-01.corp.example.com", "device_id": null, "os": "Windows" },
+    "network": { "source_ips": ["185.220.101.1"], "destination_ips": ["8.8.8.8"], "countries": ["DE"] },
+    "iocs": {
+      "ips": ["185.220.101.1", "8.8.8.8", "10.1.2.3", "127.0.0.1", "169.254.10.10"],
+      "domains": ["example.com"],
+      "urls": ["http://example.com/"],
+      "hashes": [{ "type": "sha256", "value": "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f" }]
+    },
+    "evidence": [],
+    "raw": {}
+  },
+  "dedup_key": "0000000000000000000000000000000000000000000000000000000000000000",
+  "case": { "id": null, "url": null, "status": null },
+  "triage": null,
+  "enrichment": null,
+  "investigation": null,
+  "response": null,
+  "trace": [
+    { "component": "Alert Triage", "decision": "INVESTIGATE", "reason": "Sample record.", "duration_ms": 0, "run_url": null, "error": null }
+  ]
+}

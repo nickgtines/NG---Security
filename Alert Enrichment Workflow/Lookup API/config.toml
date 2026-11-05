@@ -1,0 +1,4 @@
+color = "teal"
+route = "/lookup/api"
+route_auth = "space"
+links = ["Enrich"]

@@ -1,0 +1,1 @@
+`/enrich/test` (space members): runs the bundled `sample-alert.json` through **Enrich** with a fresh `correlation_id` and returns the enriched record. The sample includes public IPs, private/loopback/link-local IPs (skipped), a domain, a URL, a hash (EICAR), a user and a host.

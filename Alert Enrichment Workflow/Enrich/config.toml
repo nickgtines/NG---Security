@@ -1,0 +1,9 @@
+color = "purple"
+output = true
+route = "/enrich"
+route_auth = "connector"
+route_type = "api"
+title = "Alert Enrichment API"
+links = ["Write audit record"]
+connectors = [{ name = "greynoise", type = "greynoise" }, { name = "abuseipdb", type = "abuseipdb" }, { name = "virustotal-sales-engineering", type = "virusTotal" }, { name = "urlscan-for-ses", type = "urlscan" }, { name = "okta-ng", type = "okta" }, { name = "crowdstrike", type = "crowdStrike" }]
+timeout = 60

@@ -1,0 +1,6 @@
+color = "sky"
+output = true
+route = "/lookup"
+route_auth = "space"
+route_type = "webpage"
+title = "IOC Lookup"
