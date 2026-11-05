@@ -1,0 +1,5 @@
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+Content-Length: 604
+
+{"error":"Invalid alert record: schema_version must be \"3\"; correlation_id must be a non-empty string; dedup_key must be a 64-character hex sha256; trace must be an array; alert.id must be a non-empty string; alert.rule_name must be a non-empty string; alert.title must be a non-empty string; alert.source must be one of sentinel, crowdstrike; alert.severity must be one of informational, low, medium, high, critical; alert.user must be an object with upn string|null; alert.host must be an object with hostname string|null; triage must be an object (Alert Response needs a completed triage section)."}

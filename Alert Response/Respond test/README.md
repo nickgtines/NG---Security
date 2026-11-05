@@ -1,0 +1,1 @@
+`GET /respond/test` runs the bundled `sample.json` (INVESTIGATE / needs_user_confirmation) through the same logic as `/respond` — it creates a real Tines case, posts to Slack and starts a reachout. `POST` with a record runs that record instead. Keep `respond.ts`/`config.json` in sync with the Respond step.

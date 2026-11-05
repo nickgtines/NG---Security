@@ -1,0 +1,8 @@
+color = "purple"
+output = true
+route = "/respond"
+route_auth = "connector"
+route_type = "api"
+title = "Alert Response"
+connectors = [{ name = "tines-stories", type = "tines" }, { name = "slack-ng", type = "slack" }, { name = "security-reachout", type = "workflow" }]
+timeout = 120

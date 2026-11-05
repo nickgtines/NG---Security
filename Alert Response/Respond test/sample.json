@@ -1,0 +1,44 @@
+{
+  "schema_version": "3",
+  "correlation_id": "6f1c2a9e-3b7d-4e2a-9c1f-0a1b2c3d4e5f",
+  "alert": {
+    "id": "sentinel-test-0001", "source": "sentinel", "source_url": "https://portal.azure.com/#view/Microsoft_Azure_Security_Insights/IncidentPage/incidentId/test-0001",
+    "rule_name": "Impossible travel sign-in", "title": "Impossible travel for jdoe@contoso.com",
+    "description": "Sign-ins from US and RO within 20 minutes.", "severity": "high",
+    "tactics": ["InitialAccess"], "techniques": ["T1078"],
+    "first_seen": "2026-11-05T21:00:00Z", "last_seen": "2026-11-05T21:20:00Z",
+    "user": { "upn": "jdoe@contoso.com", "display_name": "Jane Doe" },
+    "host": { "hostname": "LAPTOP-JDOE", "device_id": "abc123", "os": "Windows 11" },
+    "network": { "source_ips": ["185.220.101.4"], "destination_ips": [], "countries": ["US", "RO"] },
+    "iocs": { "ips": ["185.220.101.4"], "domains": [], "urls": [], "hashes": [] },
+    "evidence": [ { "type": "signin", "timestamp": "2026-11-05T21:20:00Z", "details": { "ip": "185.220.101.4", "country": "RO" } } ],
+    "raw": {}
+  },
+  "dedup_key": "3f5a1c0e9b8d7a6f5e4d3c2b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f",
+  "case": { "id": null, "url": null, "status": null },
+  "triage": {
+    "disposition": "INVESTIGATE", "reason": "No known-good or duplicate match found.", "matched_case_id": null, "matched_allowlist_entry": null,
+    "checks": [
+      { "name": "known_good_list_check", "result": "no_match", "detail": "No active entry." },
+      { "name": "known_good_okta_check", "result": "no_match", "detail": "Not in group." },
+      { "name": "duplicate_check", "result": "no_match", "detail": "No open case." }
+    ]
+  },
+  "enrichment": {
+    "ioc_results": [ { "ioc": "185.220.101.4", "ioc_type": "ip", "provider": "abuseipdb", "verdict": "malicious", "score": 100, "details": {}, "cached": false, "error": null } ],
+    "ioc_summary": { "malicious": 1, "suspicious": 0, "clean": 0, "unknown": 0 },
+    "user_context": { "provider": "okta", "status": "ACTIVE", "groups": ["Everyone", "Finance"], "mfa_factors": ["push"], "last_login": "2026-11-05T21:20:00Z",
+      "recent_logins": [ { "time": "2026-11-05T21:00:00Z", "ip": "203.0.113.5", "country": "US" } ], "error": null },
+    "host_context": { "provider": "crowdstrike", "found": true, "platform": "Windows", "last_seen": "2026-11-05T21:15:00Z", "sensor_version": "7.10", "tags": [], "containment_status": "normal", "error": null }
+  },
+  "investigation": {
+    "verdict": "needs_user_confirmation", "risk_score": 72,
+    "findings": [
+      { "check": "impossible_travel", "severity": "high", "finding": "US→RO in 20 minutes", "evidence": [ { "ip": "185.220.101.4" } ] },
+      { "check": "malicious_ioc", "severity": "medium", "finding": "Source IP is a known Tor exit", "evidence": [] }
+    ],
+    "confirmation_question": "Did you sign in from Romania at 21:20 UTC today?", "code_version": "test"
+  },
+  "response": null,
+  "trace": [ { "component": "alert-triage", "decision": "INVESTIGATE", "reason": "No match.", "duration_ms": 120, "run_url": null, "error": null } ]
+}
