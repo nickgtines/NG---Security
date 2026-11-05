@@ -1,0 +1,21 @@
+{
+  "post": {
+    "summary": "Triage an alert record (contract v3)",
+    "description": "Runs known_good_list_check, known_good_okta_check and duplicate_check, fills in only `triage`, appends one `trace` entry and returns the full record.",
+    "requestBody": { "required": true, "content": { "application/json": { "schema": {
+      "type": "object",
+      "required": ["schema_version", "correlation_id", "alert", "dedup_key", "trace"],
+      "properties": {
+        "schema_version": { "const": "3" },
+        "correlation_id": { "type": "string" },
+        "alert": { "type": "object" },
+        "dedup_key": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+        "trace": { "type": "array" }
+      }
+    } } } },
+    "responses": {
+      "200": { "description": "The full record with `triage` set (disposition SUPPRESS_DUPLICATE | DISMISS_KNOWN_GOOD | INVESTIGATE | TRIAGE_ERROR).", "content": { "application/json": { "schema": { "type": "object" } } } },
+      "400": { "description": "Input does not match the contract.", "content": { "application/json": { "schema": { "type": "object", "properties": { "error": { "type": "string" } } } } } }
+    }
+  }
+}

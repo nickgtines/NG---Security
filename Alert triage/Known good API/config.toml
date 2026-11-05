@@ -1,0 +1,4 @@
+color = "teal"
+output = true
+route = "/known-good/api"
+route_auth = "space"

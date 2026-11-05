@@ -1,0 +1,30 @@
+{
+  "schema_version": "3",
+  "correlation_id": "00000000-0000-4000-8000-000000000001",
+  "alert": {
+    "id": "sample-alert-001",
+    "source": "sentinel",
+    "source_url": null,
+    "rule_name": "Impossible travel sign-in",
+    "title": "Impossible travel for svc-backup@contoso.com",
+    "description": "Sign-ins from two countries within 10 minutes.",
+    "severity": "medium",
+    "tactics": ["InitialAccess"],
+    "techniques": ["T1078"],
+    "first_seen": "2026-11-05T20:00:00Z",
+    "last_seen": "2026-11-05T20:10:00Z",
+    "user": { "upn": "svc-backup@contoso.com", "display_name": "Backup Service" },
+    "host": { "hostname": "BACKUP01", "device_id": null, "os": "Windows Server 2022" },
+    "network": { "source_ips": ["203.0.113.10"], "destination_ips": [], "countries": ["US", "NL"] },
+    "iocs": { "ips": ["203.0.113.10"], "domains": [], "urls": [], "hashes": [] },
+    "evidence": [ { "type": "signin", "timestamp": "2026-11-05T20:10:00Z", "details": { "ip": "203.0.113.10" } } ],
+    "raw": {}
+  },
+  "dedup_key": "0000000000000000000000000000000000000000000000000000000000000000",
+  "case": { "id": null, "url": null, "status": null },
+  "triage": null,
+  "enrichment": null,
+  "investigation": null,
+  "response": null,
+  "trace": []
+}

@@ -1,0 +1,4 @@
+{
+  "okta_known_good_group": "SOC-KnownGood-ServiceAccounts",
+  "dedup_window_hours": 24
+}

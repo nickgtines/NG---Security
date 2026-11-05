@@ -1,0 +1,8 @@
+color = "pink"
+output = true
+route = "/triage/test"
+route_auth = "space"
+route_type = "api"
+title = "Alert triage test"
+connectors = [{ name = "okta-ng", type = "okta" }, { name = "tines-stories", type = "tines" }]
+timeout = 60

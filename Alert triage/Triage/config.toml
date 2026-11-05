@@ -1,0 +1,8 @@
+color = "purple"
+output = true
+route = "/triage"
+route_auth = "connector"
+route_type = "api"
+title = "Alert triage"
+connectors = [{ name = "okta-ng", type = "okta" }, { name = "tines-stories", type = "tines" }]
+timeout = 60

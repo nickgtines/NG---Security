@@ -1,0 +1,6 @@
+color = "teal"
+output = true
+route = "/known-good"
+route_auth = "space"
+route_type = "webpage"
+title = "Known-good list"
