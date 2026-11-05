@@ -1,0 +1,7 @@
+color = "teal"
+output = true
+route = "/test"
+route_auth = "space"
+route_type = "api"
+title = "Alert Investigation self-test"
+timeout = 30

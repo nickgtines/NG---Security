@@ -1,0 +1,7 @@
+color = "purple"
+output = true
+route = "/investigate"
+route_auth = "connector"
+route_type = "api"
+title = "Alert Investigation"
+timeout = 30

@@ -1,0 +1,1 @@
+`GET /test` (space members) runs three sample records from `fixtures.py` — escalate, needs_user_confirmation, benign — through `investigation.py` and returns each verdict, risk score, confirmation question and findings, plus `all_passed`. `investigation.py` is a copy of the module in **Investigate**; keep them identical.
