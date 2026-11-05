@@ -1,0 +1,8 @@
+color = "sky"
+output = true
+route = "/reachout"
+route_auth = "space"
+route_type = "api"
+title = "Security reachout"
+timeout = 15
+links = ["Send DM"]

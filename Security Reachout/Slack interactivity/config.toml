@@ -1,0 +1,8 @@
+color = "orange"
+output = true
+route = "/reachout/slack/interactions"
+route_auth = "external_id:wpW9yISgoYnceFtZl9VpF"
+route_type = "webhook"
+title = "Security reachout Slack interactivity"
+links = ["Finalize reachout"]
+timeout = 10

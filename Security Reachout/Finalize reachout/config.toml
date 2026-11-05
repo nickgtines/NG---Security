@@ -1,0 +1,4 @@
+color = "green"
+cron = "* * * * *"
+connectors = [{ name = "slack-ng", type = "slack" }, { name = "tines-stories", type = "tines" }]
+timeout = 240
