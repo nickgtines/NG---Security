@@ -92,6 +92,13 @@ const FINDING_RANK: Record<string, number> = { high: 0, medium: 1, low: 2, info:
 const traceHasError = (trace: any[]) => trace.some((t) => t && t.error);
 const caseName = (rec: Record<string, any>) => `[${rec.alert.severity.toUpperCase()}] ${rec.alert.title}`.slice(0, 250);
 
+// Interactive "Assign to Me" button (no url): Slack sends block_actions to the app's interactivity URL,
+// where the handler assigns the case to the Slack user who clicked.
+const assignButton = (caseId: string, correlationId: string) => ({
+  type: "button", text: { type: "plain_text", text: "Assign to Me" }, action_id: "assign_to_me",
+  value: JSON.stringify({ case_id: caseId, correlation_id: correlationId }),
+});
+
 function caseRef(c: any) {
   return { id: String(c.case_id ?? c.id), url: c.url ?? null, status: c.status ? String(c.status).toLowerCase() : null };
 }
@@ -222,6 +229,7 @@ async function dismissKnownGood(ctx: Ctx) {
       // Interactive button (no url): Slack sends block_actions to the app's interactivity URL, handled in another workflow.
       buttons.push({ type: "button", text: { type: "plain_text", text: "Close case" }, style: "danger", action_id: "close_case",
         value: JSON.stringify({ case_id: ctx.caseOut.id, correlation_id: rec.correlation_id }) });
+      buttons.push(assignButton(ctx.caseOut.id, rec.correlation_id));
       blocks.push({ type: "actions", elements: buttons });
     } else {
       blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: ":warning: Case creation failed — see the alert record." }] });
@@ -293,8 +301,12 @@ async function investigate(ctx: Ctx) {
       const errs = rec.trace.filter((t: any) => t?.error).map((t: any) => `${t.component}: ${t.error}`).join("; ");
       blocks.push({ type: "section", text: { type: "mrkdwn", text: `:warning: *Automation error* — results may be incomplete. ${slackEsc(errs)}`.slice(0, 2900) } });
     }
-    if (ctx.caseOut.url) blocks.push({ type: "actions", elements: [{ type: "button", text: { type: "plain_text", text: "View case" }, url: ctx.caseOut.url, style: "primary", action_id: "view_case" }] });
-    else blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: ":warning: Case creation failed — see the alert record." }] });
+    if (ctx.caseOut.id) {
+      const buttons: any[] = [];
+      if (ctx.caseOut.url) buttons.push({ type: "button", text: { type: "plain_text", text: "View case" }, url: ctx.caseOut.url, style: "primary", action_id: "view_case" });
+      buttons.push(assignButton(ctx.caseOut.id, rec.correlation_id));
+      blocks.push({ type: "actions", elements: buttons });
+    } else blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: ":warning: Case creation failed — see the alert record." }] });
     blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `${a.source} · ${slackEsc(a.rule_name)} · correlation ${rec.correlation_id}` }] });
     slackMsg = await slackPost({ channel: config.slack_alerts_channel, text: `${a.severity.toUpperCase()}: ${a.title} (${verdict})`, blocks, unfurl_links: false });
     ctx.actions.push({ type: "slack_posted", ref: `${slackMsg.channel}:${slackMsg.ts}` });
