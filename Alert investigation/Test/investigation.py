@@ -96,6 +96,51 @@ def fmt_utc(dt):
     return dt.strftime("%Y-%m-%d %H:%M")
 
 
+def fmt_friendly(dt):
+    """e.g. 'Wednesday, November 4, 2026 at 14:22 UTC'."""
+    return f"{dt.strftime('%A, %B')} {dt.day}, {dt.year} at {dt.strftime('%H:%M')} UTC"
+
+
+# ISO 3166-1 alpha-2 → English short name, for human-readable questions.
+COUNTRY_NAMES = dict(x.split("=") for x in (
+    "AD=Andorra|AE=the United Arab Emirates|AF=Afghanistan|AG=Antigua and Barbuda|AL=Albania|AM=Armenia|"
+    "AO=Angola|AR=Argentina|AT=Austria|AU=Australia|AZ=Azerbaijan|BA=Bosnia and Herzegovina|BB=Barbados|"
+    "BD=Bangladesh|BE=Belgium|BF=Burkina Faso|BG=Bulgaria|BH=Bahrain|BI=Burundi|BJ=Benin|BN=Brunei|"
+    "BO=Bolivia|BR=Brazil|BS=the Bahamas|BT=Bhutan|BW=Botswana|BY=Belarus|BZ=Belize|CA=Canada|"
+    "CD=the Democratic Republic of the Congo|CF=the Central African Republic|CG=the Republic of the Congo|"
+    "CH=Switzerland|CI=Côte d'Ivoire|CL=Chile|CM=Cameroon|CN=China|CO=Colombia|CR=Costa Rica|CU=Cuba|"
+    "CV=Cape Verde|CY=Cyprus|CZ=the Czech Republic|DE=Germany|DJ=Djibouti|DK=Denmark|DM=Dominica|"
+    "DO=the Dominican Republic|DZ=Algeria|EC=Ecuador|EE=Estonia|EG=Egypt|ER=Eritrea|ES=Spain|ET=Ethiopia|"
+    "FI=Finland|FJ=Fiji|FR=France|GA=Gabon|GB=the United Kingdom|GD=Grenada|GE=Georgia|GH=Ghana|"
+    "GM=the Gambia|GN=Guinea|GQ=Equatorial Guinea|GR=Greece|GT=Guatemala|GW=Guinea-Bissau|GY=Guyana|"
+    "HK=Hong Kong|HN=Honduras|HR=Croatia|HT=Haiti|HU=Hungary|ID=Indonesia|IE=Ireland|IL=Israel|IN=India|"
+    "IQ=Iraq|IR=Iran|IS=Iceland|IT=Italy|JM=Jamaica|JO=Jordan|JP=Japan|KE=Kenya|KG=Kyrgyzstan|KH=Cambodia|"
+    "KM=Comoros|KN=Saint Kitts and Nevis|KP=North Korea|KR=South Korea|KW=Kuwait|KZ=Kazakhstan|LA=Laos|"
+    "LB=Lebanon|LC=Saint Lucia|LI=Liechtenstein|LK=Sri Lanka|LR=Liberia|LS=Lesotho|LT=Lithuania|"
+    "LU=Luxembourg|LV=Latvia|LY=Libya|MA=Morocco|MC=Monaco|MD=Moldova|ME=Montenegro|MG=Madagascar|"
+    "MK=North Macedonia|ML=Mali|MM=Myanmar|MN=Mongolia|MO=Macau|MR=Mauritania|MT=Malta|MU=Mauritius|"
+    "MV=the Maldives|MW=Malawi|MX=Mexico|MY=Malaysia|MZ=Mozambique|NA=Namibia|NE=Niger|NG=Nigeria|"
+    "NI=Nicaragua|NL=the Netherlands|NO=Norway|NP=Nepal|NZ=New Zealand|OM=Oman|PA=Panama|PE=Peru|"
+    "PG=Papua New Guinea|PH=the Philippines|PK=Pakistan|PL=Poland|PR=Puerto Rico|PS=Palestine|PT=Portugal|"
+    "PY=Paraguay|QA=Qatar|RO=Romania|RS=Serbia|RU=Russia|RW=Rwanda|SA=Saudi Arabia|SB=the Solomon Islands|"
+    "SC=Seychelles|SD=Sudan|SE=Sweden|SG=Singapore|SI=Slovenia|SK=Slovakia|SL=Sierra Leone|SM=San Marino|"
+    "SN=Senegal|SO=Somalia|SR=Suriname|SS=South Sudan|SV=El Salvador|SY=Syria|SZ=Eswatini|TD=Chad|TG=Togo|"
+    "TH=Thailand|TJ=Tajikistan|TL=Timor-Leste|TM=Turkmenistan|TN=Tunisia|TR=Turkey|TT=Trinidad and Tobago|"
+    "TW=Taiwan|TZ=Tanzania|UA=Ukraine|UG=Uganda|US=the United States|UY=Uruguay|UZ=Uzbekistan|"
+    "VE=Venezuela|VN=Vietnam|YE=Yemen|ZA=South Africa|ZM=Zambia|ZW=Zimbabwe"
+).split("|"))
+
+
+def country_name(value):
+    """Spell out a 2-letter country code; pass through anything else (already a name)."""
+    s = str(value).strip()
+    return COUNTRY_NAMES.get(s.upper(), s) if len(s) == 2 else s
+
+
+# Identity provider each alert source's sign-in evidence comes from.
+SIGNIN_PROVIDER_BY_SOURCE = {"sentinel": "Microsoft Entra ID"}
+
+
 def finding(check, severity, text, evidence):
     return {"check": check, "severity": severity, "finding": text, "evidence": evidence}
 
@@ -139,6 +184,10 @@ def alert_signins(record):
             "success": success,
             "client_app": _first(d, "client_app", "clientAppUsed", "client"),
             "legacy_auth": d.get("legacy_auth") is True,
+            "provider": _first(d, "provider", "identity_provider", "idp")
+                        or SIGNIN_PROVIDER_BY_SOURCE.get(record["alert"].get("source")),
+            "app": _first(d, "app", "application", "app_name", "appDisplayName",
+                          "resourceDisplayName", "target_app"),
             "source": "alert.evidence",
         })
     return out
@@ -151,6 +200,8 @@ def okta_logins(record):
         if isinstance(l, dict):
             out.append({"time": parse_ts(l.get("time")), "timestamp": l.get("time"),
                         "country": l.get("country"), "ip": l.get("ip"),
+                        "provider": "Okta" if str(uc.get("provider") or "okta").lower() == "okta" else uc.get("provider"),
+                        "app": l.get("app") or l.get("application"),
                         "source": "user_context.recent_logins"})
     return out
 
@@ -348,7 +399,15 @@ def decide_verdict(findings):
         alert_side = [c for c in dated if c.get("source") == "alert.evidence"] or dated
         if alert_side:
             pick = max(alert_side, key=lambda c: (parse_ts(c["timestamp"]), str(c["country"])))
-            question = f"Did you sign in from {pick['country']} at {fmt_utc(parse_ts(pick['timestamp']))} UTC?"
+            provider, app = pick.get("provider"), pick.get("app")
+            if provider and app and str(app).lower() != str(provider).lower():
+                target = f" to {app} (via {provider})"
+            elif provider or app:
+                target = f" to {provider or app}"
+            else:
+                target = ""
+            question = (f"Did you sign in{target} from {country_name(pick['country'])} "
+                        f"on {fmt_friendly(parse_ts(pick['timestamp']))}?")
         else:
             question = "Did you recently sign in from an unfamiliar location?"
         return "needs_user_confirmation", risk_score, question
