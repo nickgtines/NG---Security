@@ -51,8 +51,8 @@ if (!slackUser) {
   process.exit(0);
 }
 
-// 2. Send the Block Kit DM.
-const dm = await slack("conversations.open", { users: slackUser.id }, cid);
+// 2. Send the Block Kit DM. Posting to the user ID delivers it to the app's
+// Messages tab and only needs chat:write (no im:write / conversations.open).
 const blocks = [
   { type: "header", text: { type: "plain_text", text: "Security check", emoji: true } },
   {
@@ -90,7 +90,7 @@ const blocks = [
 ];
 const msg = await slack(
   "chat.postMessage",
-  { channel: dm.channel.id, text: `Security check: ${rec.question}`, blocks },
+  { channel: slackUser.id, text: `Security check: ${rec.question}`, blocks },
   cid,
 );
 
