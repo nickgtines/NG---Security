@@ -11,6 +11,6 @@ RUN --mount=type=cache,target=/root/.bun/install/cache --mount=type=tmpfs,target
   if [ -f package.json ]; then bun install; fi
 COPY --link . .
 
-VOLUME ["audit:concurrency=exclusive"]
+VOLUME ["audit"]
 
 CMD ["bun", "./script.ts"]

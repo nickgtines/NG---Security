@@ -1,6 +1,6 @@
-// Appends one audit line per Enrich run to /storage/audit/YYYY-MM-DD.jsonl (space standard).
-// Runs after Enrich has already responded, so the exclusive lock never delays callers.
-import { appendFile, mkdir } from "node:fs/promises";
+// Writes one audit record per Enrich run to its own file: /storage/audit/YYYY-MM-DD/<ts>-<uuid>.jsonl
+// One writer per file, so no volume lock is needed.
+import { writeFile, mkdir } from "node:fs/promises";
 const raw = await Bun.stdin.text();
 const status = Number(raw.match(/^HTTP\/\d(?:\.\d)? (\d{3})/)?.[1] ?? 0);
 const sep = raw.indexOf("\r\n\r\n");
@@ -36,6 +36,7 @@ if (body?.schema_version) {
     action: "enrich_rejected", target: "request", outcome: "skipped", detail: { status, message: body?.message ?? null },
   };
 }
-await mkdir("/storage/audit", { recursive: true });
-await appendFile(`/storage/audit/${ts.slice(0, 10)}.jsonl`, JSON.stringify(rec) + "\n");
-log("info", "audit_written", "Appended audit record.", { correlation_id: rec.correlation_id, action: rec.action, outcome: rec.outcome });
+const dir = `/storage/audit/${ts.slice(0, 10)}`;
+await mkdir(dir, { recursive: true });
+await writeFile(`${dir}/${ts.replace(/[:.]/g, "-")}-${crypto.randomUUID()}.jsonl`, JSON.stringify(rec) + "\n", { flag: "wx" });
+log("info", "audit_written", "Wrote audit record.", { correlation_id: rec.correlation_id, action: rec.action, outcome: rec.outcome });

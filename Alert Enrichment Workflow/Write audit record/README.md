@@ -1,1 +1,1 @@
-Runs after **Enrich** responds. Appends one line per run (enrichment, single-IOC lookup, or rejected input) to the shared `audit` volume at `/storage/audit/YYYY-MM-DD.jsonl`, including every provider call's verdict and cache hit/miss.
+Runs after **Enrich** responds. Writes one uniquely named file per run (enrichment, single-IOC lookup, or rejected input) to the shared `audit` volume at `/storage/audit/YYYY-MM-DD/<timestamp>-<uuid>.jsonl`, including every provider call's verdict and cache hit/miss.
