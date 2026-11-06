@@ -1,0 +1,1 @@
+Demo page at `/` (space auth). Buttons post the sanitized Contoso samples in `samples.ts` (also the fixtures for the ingest steps) to the ingest routes, then show the trace timeline, expandable component sections, and links to the Tines case and Slack message. Recent runs come from `/runs`.

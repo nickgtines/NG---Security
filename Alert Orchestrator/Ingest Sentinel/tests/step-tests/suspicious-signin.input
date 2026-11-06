@@ -1,0 +1,16 @@
+POST /ingest/sentinel HTTP/1.1
+accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+accept-encoding: gzip, deflate
+accept-language: en-US,en;q=0.9
+connection: keep-alive
+content-type: application/json
+content-length: 866
+host: localhost
+sec-fetch-dest: document
+sec-fetch-mode: navigate
+sec-fetch-site: none
+sec-fetch-user: ?1
+user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+x-forwarded-for: 127.0.0.1
+
+{"SystemAlertId":"4b7d3f0e-9c1a-4e7b-8a52-1f2c3d4e5f60","AlertName":"Unfamiliar sign-in properties","DisplayName":"Suspicious sign-in for alex.wilber@contoso.com","Description":"US and RO within 40 minutes.","AlertSeverity":"Medium","Tactics":"InitialAccess","Techniques":["T1078"],"StartTime":"2026-11-04T14:02:11Z","EndTime":"2026-11-04T14:41:37Z","Entities":[{"Type":"account","Name":"alex.wilber","UPNSuffix":"contoso.com","DisplayName":"Alex Wilber"},{"Type":"ip","Address":"10.20.4.15","Location":{"CountryCode":"US"}},{"Type":"ip","Address":"198.51.100.77","Location":{"CountryCode":"RO"}}],"SignInLogs":[{"TimeGenerated":"2026-11-04T14:02:11Z","IPAddress":"10.20.4.15","Location":"US","ResultType":"0","ClientAppUsed":"Browser"},{"TimeGenerated":"2026-11-04T14:41:37Z","IPAddress":"198.51.100.77","Location":"RO","ResultType":"0","ClientAppUsed":"Browser"}]}

@@ -1,0 +1,4 @@
+color = "purple"
+links = ["Call Alert Enrichment"]
+connectors = [{ name = "alert-triage", type = "workflow" }]
+timeout = 45

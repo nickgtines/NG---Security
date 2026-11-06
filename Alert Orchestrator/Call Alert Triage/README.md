@@ -1,0 +1,1 @@
+Calls **Alert Triage** (`POST /triage`) through its workflow connector (30 s timeout). Adds the ingest trace entry first. Invalid ingest input passes through untouched. A failed call keeps the record and adds a `call_failed` trace entry.

@@ -1,0 +1,6 @@
+color = "sky"
+route = "/ingest/sentinel"
+route_auth = "space"
+route_type = "webhook"
+title = "Ingest: Microsoft Sentinel"
+links = ["Call Alert Triage"]

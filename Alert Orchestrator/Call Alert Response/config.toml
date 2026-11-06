@@ -1,0 +1,4 @@
+color = "green"
+output = true
+connectors = [{ name = "alert-response", type = "workflow" }]
+timeout = 45

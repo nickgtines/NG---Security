@@ -1,0 +1,1 @@
+Calls **Alert Enrichment** (`POST /enrich`) when triage is INVESTIGATE or TRIAGE_ERROR; passes the record through unchanged for SUPPRESS_DUPLICATE / DISMISS_KNOWN_GOOD. 30 s timeout; failures keep the last good record.

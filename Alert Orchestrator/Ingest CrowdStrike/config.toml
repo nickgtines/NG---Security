@@ -1,0 +1,6 @@
+color = "red"
+route = "/ingest/crowdstrike"
+route_auth = "space"
+route_type = "webhook"
+title = "Ingest: CrowdStrike Falcon"
+links = ["Call Alert Triage"]

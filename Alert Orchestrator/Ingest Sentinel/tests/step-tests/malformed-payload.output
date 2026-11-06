@@ -1,0 +1,1 @@
+{"kind":"invalid","status":400,"source":"sentinel","correlation_id":"1943fe24-31ce-4a07-b159-27ba9a904f90","error":"Sentinel Entities is not valid JSON.","trace":[{"component":"alert-orchestrator.ingest","decision":"rejected","reason":"Invalid sentinel input: Sentinel Entities is not valid JSON.","duration_ms":4,"run_url":null,"error":"Sentinel Entities is not valid JSON."}]}

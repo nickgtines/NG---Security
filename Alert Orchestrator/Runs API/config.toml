@@ -1,0 +1,6 @@
+color = "teal"
+output = true
+route = "/runs"
+route_auth = "space"
+route_type = "api"
+title = "Alert Orchestrator recent runs"

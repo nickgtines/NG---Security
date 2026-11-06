@@ -1,0 +1,16 @@
+POST /ingest/crowdstrike HTTP/1.1
+accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+accept-encoding: gzip, deflate
+accept-language: en-US,en;q=0.9
+connection: keep-alive
+content-type: application/json
+content-length: 728
+host: localhost
+sec-fetch-dest: document
+sec-fetch-mode: navigate
+sec-fetch-site: none
+sec-fetch-user: ?1
+user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+x-forwarded-for: 127.0.0.1
+
+{"detection_id":"ldt:9a1f0c3e5b7d4e21:4295012345","name":"Network discovery activity","max_severity_displayname":"Low","first_behavior":"2026-11-04T02:15:00Z","last_behavior":"2026-11-04T02:19:42Z","device":{"device_id":"9a1f0c3e5b7d4e21a0b1c2d3e4f50617","hostname":"VULNSCAN01","platform_name":"Linux","os_version":"Ubuntu 22.04","local_ip":"10.0.8.21","external_ip":"10.0.8.21"},"behaviors":[{"timestamp":"2026-11-04T02:15:00Z","scenario":"Network discovery","display_name":"NetworkScanActivity","description":"Port scan.","tactic":"Discovery","technique_id":"T1046","user_name":"svc-scanner","filename":"nmap","cmdline":"nmap -sS -p 1-1024 10.0.0.0/16","network_accesses":[{"remote_address":"10.0.1.10","remote_port":445}]}]}

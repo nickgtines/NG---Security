@@ -1,0 +1,6 @@
+color = "green"
+output = true
+route = "/"
+route_auth = "space"
+route_type = "webpage"
+title = "Alert Orchestrator demo"

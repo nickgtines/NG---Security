@@ -1,0 +1,1 @@
+Always calls **Alert Response** (`POST /respond`), appends the Orchestrator trace entry (route taken and why), stores the final record in volume `alert-orchestrator-runs` at `records/<correlation_id>.json` (+ an index entry for Recent runs), and returns it as the HTTP response to the ingest route. Invalid input → 400.

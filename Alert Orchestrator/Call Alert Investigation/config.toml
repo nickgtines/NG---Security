@@ -1,0 +1,4 @@
+color = "pink"
+links = ["Call Alert Response"]
+connectors = [{ name = "alert-investigation", type = "workflow" }]
+timeout = 45

@@ -1,0 +1,1 @@
+Webhook `POST /ingest/sentinel` (space auth). Accepts a Microsoft Sentinel SecurityAlert row or Incident, maps it with `normalize_sentinel`, extracts IOCs (deduplicated, private IPs dropped), builds a contract-v3 alert record and checks it. Hands either the record or an `invalid` envelope (→ 400) to **Orchestrate**. `alert.ts` is shared with Ingest CrowdStrike.
