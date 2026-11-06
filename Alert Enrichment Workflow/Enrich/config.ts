@@ -25,7 +25,7 @@ export const CONFIG = {
 
   // AbuseIPDB (ip): score = abuseConfidenceScore.
   ABUSEIPDB: {
-    MALICIOUS_MIN_SCORE: 75, // >= 75 → malicious
+    MALICIOUS_MIN_SCORE: 80, // >= 75 → malicious
     SUSPICIOUS_MIN_SCORE: 25, // 25–74 → suspicious; < 25 with reports → clean
     MAX_AGE_DAYS: 90, // report window sent to /check
   },
