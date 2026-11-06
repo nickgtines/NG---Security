@@ -4,5 +4,5 @@ route = "/respond/test"
 route_auth = "space"
 route_type = "api"
 title = "Alert Response test"
-connectors = [{ name = "tines-stories", type = "tines" }, { name = "slack-ng", type = "slack" }, { name = "security-reachout", type = "workflow" }]
+connectors = [{ name = "tines-stories", type = "tines" }, { name = "security-reachout", type = "workflow" }, { name = "ng-slack-security-bot", type = "slack" }]
 timeout = 120
