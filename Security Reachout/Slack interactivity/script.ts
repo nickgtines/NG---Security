@@ -14,6 +14,34 @@ try {
 }
 
 const action = payload?.type === "block_actions" ? payload.actions?.[0] : null;
+
+// "Close Case" button: the case ID comes from the button value or the message it sits in.
+const isCloseCase =
+  action?.action_id === "close_case" ||
+  (action?.type === "button" && String(action?.text?.text ?? "").trim().toLowerCase() === "close case");
+if (isCloseCase) {
+  const fromValue = typeof action.value === "string" && /^\d{1,18}$/.test(action.value.trim()) ? action.value.trim() : null;
+  const haystack = [payload.message?.text ?? "", JSON.stringify(payload.message?.blocks ?? [])].join("\n");
+  const m =
+    haystack.match(/\/cases\/(\d{1,18})/i) ??
+    haystack.match(/case[\s_-]*(?:id)?[\s:*#|]*(\d{1,18})/i);
+  const caseId = fromValue ?? m?.[1] ?? null;
+  const channel = payload.channel?.id ?? payload.container?.channel_id ?? "";
+  const ts = payload.container?.message_ts ?? payload.message?.ts ?? "";
+  if (!caseId) {
+    log(null, "close_case_no_case_id", { channel, message_ts: ts });
+    ack();
+    process.exit(0);
+  }
+  log(null, "close_case_requested", { case_id: caseId, clicker: payload.user?.id ?? null });
+  ack({
+    "x-close-case-id": caseId,
+    "x-slack-channel": /^[A-Z0-9]+$/.test(channel) ? channel : "",
+    "x-slack-message-ts": /^\d+\.\d+$/.test(ts) ? ts : "",
+    "x-slack-user": /^[A-Z0-9]+$/.test(payload.user?.id ?? "") ? payload.user.id : "",
+  });
+  process.exit(0);
+}
 const answer =
   action?.action_id === "reachout_confirm" ? "confirmed" : action?.action_id === "reachout_deny" ? "denied" : null;
 const reachoutId = typeof action?.value === "string" && ID_RE.test(action.value) ? action.value : null;

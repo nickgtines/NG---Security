@@ -111,8 +111,41 @@ async function finalize(rec: Reachout, answer: Answer, at: string) {
 const raw = await Bun.stdin.text();
 
 if (raw.trim()) {
+  const headers = parseHttp(raw).headers;
+  const closeCaseId = headers["x-close-case-id"];
+  if (closeCaseId && /^\d{1,18}$/.test(closeCaseId)) {
+    // "Close Case" button clicked in Slack.
+    const cid = `close-case-${closeCaseId}`;
+    const user = headers["x-slack-user"] || "";
+    const channel = headers["x-slack-channel"] || "";
+    const ts = headers["x-slack-message-ts"] || "";
+    const path = `/api/v2/cases/${encodeURIComponent(closeCaseId)}`;
+    const c = await tines("GET", path, cid);
+    if (String(c?.status ?? "").toLowerCase() === "closed") {
+      log(cid, "close_case_already_closed", { case_id: closeCaseId });
+    } else {
+      await tines("PUT", path, cid, { status: "closed" });
+      await tines("POST", `${path}/comments`, cid, {
+        value: `**Case closed from Slack**\n- **Closed by:** ${user ? `Slack ${user}` : "unknown Slack user"}\n- **Time:** ${new Date().toISOString()}`,
+      });
+      log(cid, "close_case_done", { case_id: closeCaseId, slack_user: user || null });
+    }
+    if (channel && ts) {
+      await slack(
+        "chat.postMessage",
+        {
+          channel,
+          thread_ts: ts,
+          text: `:lock: Case ${esc(closeCaseId)} closed${user ? ` by <@${user}>` : ""}.`,
+          unfurl_links: false,
+        },
+        cid,
+      );
+    }
+    process.exit(0);
+  }
   // Linked from "Slack interactivity": finalize the clicked reachout.
-  const id = parseHttp(raw).headers["x-reachout-id"];
+  const id = headers["x-reachout-id"];
   if (!id || !ID_RE.test(id)) process.exit(0); // click was ignored upstream
   const rec = readJson<Reachout>(`${OPEN_DIR}/${id}.json`);
   const resp = readJson<ResponseRecord>(`${RESPONSES_DIR}/${id}.json`);
