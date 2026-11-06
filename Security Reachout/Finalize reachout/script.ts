@@ -26,6 +26,8 @@ const PRIORITIES = ["info", "low", "medium", "high", "critical"];
 const SWEEP_BATCH = 25;
 const STUCK_RESPONSE_MS = 5 * 60_000;
 const CLOSED_RETENTION_MS = 30 * 24 * 60 * 60_000;
+// "Assign to Me" always assigns to this user.
+const ASSIGNEE_EMAIL = "ngilling@tines.io";
 
 async function finalize(rec: Reachout, answer: Answer, at: string) {
   const cid = rec.correlation_id;
@@ -112,16 +114,28 @@ const raw = await Bun.stdin.text();
 
 if (raw.trim()) {
   const headers = parseHttp(raw).headers;
-  const closeCaseId = headers["x-close-case-id"];
-  if (closeCaseId && /^\d{1,18}$/.test(closeCaseId)) {
-    // "Close Case" button clicked in Slack.
-    const cid = `close-case-${closeCaseId}`;
+  const closeCaseId = headers["x-case-id"] || headers["x-close-case-id"];
+  const caseAction = headers["x-case-action"] || "close";
+  if (closeCaseId && /^\d{1,18}$/.test(closeCaseId) && (caseAction === "close" || caseAction === "assign")) {
+    // "Close Case" or "Assign to Me" button clicked in Slack.
+    const cid = `${caseAction}-case-${closeCaseId}`;
     const user = headers["x-slack-user"] || "";
     const channel = headers["x-slack-channel"] || "";
     const ts = headers["x-slack-message-ts"] || "";
     const path = `/api/v2/cases/${encodeURIComponent(closeCaseId)}`;
     const c = await tines("GET", path, cid);
-    if (String(c?.status ?? "").toLowerCase() === "closed") {
+    if (caseAction === "assign") {
+      const current = (c?.assignees ?? []).map((a: any) => String(a?.email ?? "").toLowerCase());
+      if (current.includes(ASSIGNEE_EMAIL)) {
+        log(cid, "assign_case_already_assigned", { case_id: closeCaseId });
+      } else {
+        await tines("PUT", path, cid, { assignee_emails: [ASSIGNEE_EMAIL] });
+        await tines("POST", `${path}/comments`, cid, {
+          value: `**Case assigned from Slack**\n- **Assigned to:** ${ASSIGNEE_EMAIL}\n- **Clicked by:** ${user ? `Slack ${user}` : "unknown Slack user"}\n- **Time:** ${new Date().toISOString()}`,
+        });
+        log(cid, "assign_case_done", { case_id: closeCaseId, assignee: ASSIGNEE_EMAIL, slack_user: user || null });
+      }
+    } else if (String(c?.status ?? "").toLowerCase() === "closed") {
       log(cid, "close_case_already_closed", { case_id: closeCaseId });
     } else {
       await tines("PUT", path, cid, { status: "closed" });
@@ -141,9 +155,9 @@ if (raw.trim()) {
       if (Array.isArray(msg?.blocks) && msg.blocks.length) {
         try {
           await slack("chat.update", { channel, ts, text: msg.text || `Case ${closeCaseId}`, blocks: msg.blocks }, cid);
-          log(cid, "close_case_button_removed", { case_id: closeCaseId });
+          log(cid, `${caseAction}_case_button_removed`, { case_id: closeCaseId });
         } catch (err) {
-          log(cid, "close_case_button_remove_failed", { case_id: closeCaseId, error: String(err) });
+          log(cid, `${caseAction}_case_button_remove_failed`, { case_id: closeCaseId, error: String(err) });
         }
       }
       await slack(
@@ -151,7 +165,10 @@ if (raw.trim()) {
         {
           channel,
           thread_ts: ts,
-          text: `:lock: Case ${esc(closeCaseId)} closed${user ? ` by <@${user}>` : ""}.`,
+          text:
+            caseAction === "assign"
+              ? `:bust_in_silhouette: Case ${esc(closeCaseId)} assigned to ${esc(ASSIGNEE_EMAIL)}${user ? ` by <@${user}>` : ""}.`
+              : `:lock: Case ${esc(closeCaseId)} closed${user ? ` by <@${user}>` : ""}.`,
           unfurl_links: false,
         },
         cid,

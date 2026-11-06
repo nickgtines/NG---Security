@@ -15,11 +15,19 @@ try {
 
 const action = payload?.type === "block_actions" ? payload.actions?.[0] : null;
 
-// "Close Case" button: the case ID comes from the button value or the message it sits in.
-const isCloseCase =
-  action?.action_id === "close_case" ||
-  (action?.type === "button" && String(action?.text?.text ?? "").trim().toLowerCase() === "close case");
-if (isCloseCase) {
+// Case buttons ("Close Case", "Assign to Me"): the case ID comes from the button value or the message it sits in.
+const CASE_BUTTONS: Record<string, { actionId: string; label: string }> = {
+  close: { actionId: "close_case", label: "close case" },
+  assign: { actionId: "assign_to_me", label: "assign to me" },
+};
+const buttonKind = (el: any): string | null => {
+  for (const [kind, b] of Object.entries(CASE_BUTTONS)) {
+    if (el?.action_id === b.actionId || (el?.type === "button" && String(el?.text?.text ?? "").trim().toLowerCase() === b.label)) return kind;
+  }
+  return null;
+};
+const caseAction = action ? buttonKind(action) : null;
+if (caseAction) {
   const fromValue = typeof action.value === "string" && /^\d{1,18}$/.test(action.value.trim()) ? action.value.trim() : null;
   const haystack = [payload.message?.text ?? "", JSON.stringify(payload.message?.blocks ?? [])].join("\n");
   const m =
@@ -29,15 +37,13 @@ if (isCloseCase) {
   const channel = payload.channel?.id ?? payload.container?.channel_id ?? "";
   const ts = payload.container?.message_ts ?? payload.message?.ts ?? "";
   if (!caseId) {
-    log(null, "close_case_no_case_id", { channel, message_ts: ts });
+    log(null, `${caseAction}_case_no_case_id`, { channel, message_ts: ts });
     ack();
     process.exit(0);
   }
-  log(null, "close_case_requested", { case_id: caseId, clicker: payload.user?.id ?? null });
-  // The original message minus the Close Case button, so Finalize can update it in place.
-  const isCloseBtn = (el: any) =>
-    el?.action_id === "close_case" ||
-    (el?.type === "button" && String(el?.text?.text ?? "").trim().toLowerCase() === "close case");
+  log(null, `${caseAction}_case_requested`, { case_id: caseId, clicker: payload.user?.id ?? null });
+  // The original message minus the clicked button, so Finalize can update it in place.
+  const isCloseBtn = (el: any) => buttonKind(el) === caseAction;
   const blocks = (Array.isArray(payload.message?.blocks) ? payload.message.blocks : [])
     .map((b: any) => (b?.type === "actions" && Array.isArray(b.elements) ? { ...b, elements: b.elements.filter((e: any) => !isCloseBtn(e)) } : b))
     .filter((b: any) => !(b?.type === "actions" && b.elements.length === 0))
@@ -45,7 +51,8 @@ if (isCloseCase) {
   const body = JSON.stringify({ text: String(payload.message?.text ?? ""), blocks });
   process.stdout.write(httpResponse(200, "OK", body, {
     "content-type": "application/json",
-    "x-close-case-id": caseId,
+    "x-case-id": caseId,
+    "x-case-action": caseAction,
     "x-slack-channel": /^[A-Z0-9]+$/.test(channel) ? channel : "",
     "x-slack-message-ts": /^\d+\.\d+$/.test(ts) ? ts : "",
     "x-slack-user": /^[A-Z0-9]+$/.test(payload.user?.id ?? "") ? payload.user.id : "",
