@@ -1,8 +1,16 @@
 import { readdirSync, statSync } from "node:fs";
 import {
-  Answer, CLOSED_DIR, ID_RE, OPEN_DIR, RESPONSES_DIR, Reachout, ResponseRecord, closeRecord, commentOnCase, esc, log,
-  parseHttp, readJson, removeIfExists, slack, threadReply, tines,
+  Answer, CLOSED_DIR, ID_RE, NoteColor, OPEN_DIR, RESPONSES_DIR, Reachout, ResponseRecord, closeRecord, commentOnCase,
+  esc, log, noteOnCase, parseHttp, readJson, removeIfExists, slack, threadReply, tines, writeJson,
 } from "./lib.ts";
+
+const NOTE_TITLE: Record<Answer, string> = {
+  confirmed: "Security reachout: User confirmed",
+  denied: "Security reachout: User denied",
+  no_response: "Security reachout: No response",
+};
+// Tines has no grey note color; blue is the neutral choice for no response.
+const NOTE_COLOR: Record<Answer, NoteColor> = { confirmed: "green", denied: "red", no_response: "blue" };
 
 const ANSWER_LABEL: Record<Answer, string> = {
   confirmed: "Confirmed: \"Yes, this was me\"",
@@ -56,17 +64,24 @@ async function finalize(rec: Reachout, answer: Answer, at: string) {
   }
 
   // 5. Comment on the case.
-  await commentOnCase(
-    rec,
-    [
-      "**Security reachout — user response**",
-      `- **User:** ${rec.user_upn}${rec.slack_user_id ? ` (Slack ${rec.slack_user_id})` : ""}`,
-      `- **Question:** ${rec.question}`,
-      `- **Answer:** ${ANSWER_LABEL[answer]}`,
-      `- **Time:** ${at}`,
-      `- **Reachout ID:** ${rec.reachout_id}`,
-    ].join("\n"),
-  );
+  const details = [
+    `- **User:** ${rec.user_upn}${rec.slack_user_id ? ` (Slack ${rec.slack_user_id})` : ""}`,
+    `- **Question:** ${rec.question}`,
+    `- **Answer:** ${ANSWER_LABEL[answer]}`,
+    `- **Time:** ${at}`,
+    `- **Reachout ID:** ${rec.reachout_id}`,
+  ].join("\n");
+  await commentOnCase(rec, `**Security reachout — user response**\n${details}`);
+
+  // Color-coded Case Note with the final answer (once per reachout, even across retries).
+  if (!rec.note_created) {
+    await noteOnCase(rec, NOTE_TITLE[answer], details, NOTE_COLOR[answer]);
+    rec.note_created = true;
+    writeJson(`${OPEN_DIR}/${rec.reachout_id}.json`, rec);
+    log(cid, "case_note_created", { reachout_id: rec.reachout_id, color: NOTE_COLOR[answer] });
+  } else {
+    log(cid, "case_note_skipped_existing", { reachout_id: rec.reachout_id });
+  }
 
   // Tags (and priority bump on denial).
   const update: Record<string, unknown> = { add_tag_names: [TAG[answer]] };

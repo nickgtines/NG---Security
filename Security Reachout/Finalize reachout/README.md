@@ -1,1 +1,1 @@
-Updates the DM, comments/tags/prioritizes the Tines case, and replies in the alert thread. Triggered by a click, and every minute to time out unanswered reachouts.
+Updates the DM, comments/tags/prioritizes the Tines case, adds a color-coded Case Note with the final answer (green = confirmed, red = denied, blue = no response; created once per reachout via `note_created`), and replies in the alert thread. Triggered by a click, and every minute to time out unanswered reachouts.

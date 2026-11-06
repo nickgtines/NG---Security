@@ -29,6 +29,8 @@ export interface Reachout {
   sent_at?: string;
   outcome?: Answer | "user_not_found";
   closed_at?: string;
+  /** Set once the final-answer Case Note exists, so retries don't add a second one. */
+  note_created?: boolean;
 }
 
 export interface ResponseRecord {
@@ -133,6 +135,17 @@ export async function tines(method: string, path: string, cid: string, body?: un
 
 export async function commentOnCase(rec: Reachout, value: string) {
   await tines("POST", `/api/v2/cases/${encodeURIComponent(rec.case_id)}/comments`, rec.correlation_id, { value });
+}
+
+/** Tines case note colors accepted by the API. */
+export type NoteColor = "white" | "gold" | "magenta" | "green" | "blue" | "red" | "mint" | "indigo";
+
+export async function noteOnCase(rec: Reachout, title: string, content: string, color: NoteColor) {
+  await tines("POST", `/api/v2/cases/${encodeURIComponent(rec.case_id)}/notes`, rec.correlation_id, {
+    title,
+    content,
+    color,
+  });
 }
 
 export async function threadReply(rec: Reachout, text: string) {
