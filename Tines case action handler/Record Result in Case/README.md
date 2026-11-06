@@ -1,0 +1,1 @@
+Adds a case note (green on success, red on failure) with the action label, system, target, who took it, timestamp, and the endpoint system's JSON response. If the endpoint action failed, the run is marked failed after the note is written.

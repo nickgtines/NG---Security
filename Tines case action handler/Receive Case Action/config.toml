@@ -1,0 +1,6 @@
+color = "purple"
+route = "/case-actions"
+route_auth = "external_id:qBj4MVnL_FoWg0V09Lp3C"
+route_type = "webhook"
+title = "Case Actions webhook"
+links = ["Acknowledge in Case"]

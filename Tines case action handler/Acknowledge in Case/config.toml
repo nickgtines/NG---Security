@@ -1,0 +1,3 @@
+color = "sky"
+links = ["CrowdStrike Contain Host", "CrowdStrike Kill Process", "Okta Revoke Sessions", "Okta Suspend User", "Okta Require Password Reset", "Slack Create Channel", "Okta Get User Details"]
+connectors = [{ name = "tines-stories", type = "tines" }]

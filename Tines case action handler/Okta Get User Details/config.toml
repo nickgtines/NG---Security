@@ -1,0 +1,3 @@
+color = "teal"
+links = ["Record Result in Case"]
+connectors = [{ name = "okta-ng", type = "okta" }]
