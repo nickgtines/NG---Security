@@ -1,5 +1,6 @@
 // Alert Response core logic (shared contract v3). Deterministic, no AI.
 import config from "./config.json";
+import { alertSection, traceSection, triageNote, enrichmentNote, investigationNote, investigationColor } from "./format";
 
 export const COMPONENT = "alert-response";
 const HTTP_TIMEOUT_MS = 15_000;
@@ -83,68 +84,10 @@ async function slackPost(payload: Record<string, unknown>) {
 }
 
 // ---------- Formatting ----------
-const md = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : String(v).replace(/\|/g, "\\|").replace(/\r?\n/g, " "));
-const list = (v: unknown) => (arr(v).length ? arr(v).map(md).join(", ") : "—");
 const slackEsc = (v: unknown) => String(v ?? "—").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const PRIORITY: Record<string, string> = { informational: "info", low: "low", medium: "medium", high: "high", critical: "critical" };
 const SEV_EMOJI: Record<string, string> = { informational: ":white_circle:", low: ":large_blue_circle:", medium: ":large_yellow_circle:", high: ":large_orange_circle:", critical: ":red_circle:" };
 const FINDING_RANK: Record<string, number> = { high: 0, medium: 1, low: 2, info: 3 };
-
-function alertSection(rec: Record<string, any>) {
-  const a = rec.alert;
-  return [
-    "## Alert",
-    `| Field | Value |\n|---|---|`,
-    `| Alert ID | ${md(a.id)} |`, `| Source | ${md(a.source)} |`, `| Rule | ${md(a.rule_name)} |`, `| Severity | ${md(a.severity)} |`,
-    `| First seen | ${md(a.first_seen)} |`, `| Last seen | ${md(a.last_seen)} |`,
-    `| User | ${md(a.user?.upn)} (${md(a.user?.display_name)}) |`,
-    `| Host | ${md(a.host?.hostname)} / ${md(a.host?.device_id)} / ${md(a.host?.os)} |`,
-    `| Tactics | ${list(a.tactics)} |`, `| Techniques | ${list(a.techniques)} |`,
-    `| Source IPs | ${list(a.network?.source_ips)} |`, `| Destination IPs | ${list(a.network?.destination_ips)} |`, `| Countries | ${list(a.network?.countries)} |`,
-    `| Correlation ID | ${md(rec.correlation_id)} |`, `| Dedup key | ${md(rec.dedup_key)} |`,
-    "",
-    a.source_url ? `[Open alert in ${a.source}](${a.source_url})` : "_No source URL provided._",
-    "",
-    "**Description**", "", md(a.description),
-  ].join("\n");
-}
-
-function triageSection(t: Record<string, any>) {
-  const rows = arr(t.checks).map((c) => `| ${md(c.name)} | ${md(c.result)} | ${md(c.detail)} |`);
-  return ["## Triage", `**Disposition:** ${md(t.disposition)}`, "", `**Reason:** ${md(t.reason)}`, "",
-    "| Check | Result | Detail |\n|---|---|---|", ...(rows.length ? rows : ["| — | — | No checks recorded |"])].join("\n");
-}
-
-function enrichmentSection(e: Record<string, any> | null) {
-  if (!e) return "## Enrichment\n_No enrichment section was provided._";
-  const iocRows = arr(e.ioc_results).map((r) => `| ${md(r.ioc)} (${md(r.ioc_type)}) | ${md(r.provider)} | ${md(r.verdict)} | ${md(r.score)} |${r.error ? ` error: ${md(r.error)}` : ""}`);
-  const s = e.ioc_summary ?? {};
-  const u = e.user_context, h = e.host_context;
-  const logins = arr(u?.recent_logins).slice(0, 10).map((l) => `${md(l.time)} ${md(l.ip)} ${md(l.country)}`).join("; ");
-  return [
-    "## Enrichment",
-    `**IOC summary:** malicious ${s.malicious ?? 0}, suspicious ${s.suspicious ?? 0}, clean ${s.clean ?? 0}, unknown ${s.unknown ?? 0}`, "",
-    "| IOC | Provider | Verdict | Score |\n|---|---|---|---|", ...(iocRows.length ? iocRows : ["| — | — | — | — |"]), "",
-    "**User context (Okta)**", "",
-    u ? [`| Field | Value |\n|---|---|`, `| Status | ${md(u.status)} |`, `| Groups | ${list(u.groups)} |`, `| MFA factors | ${list(u.mfa_factors)} |`,
-         `| Last login | ${md(u.last_login)} |`, `| Recent logins | ${logins || "—"} |`, `| Error | ${md(u.error)} |`].join("\n") : "_Not available._", "",
-    "**Host context (CrowdStrike)**", "",
-    h ? [`| Field | Value |\n|---|---|`, `| Found | ${md(h.found)} |`, `| Platform | ${md(h.platform)} |`, `| Last seen | ${md(h.last_seen)} |`,
-         `| Sensor version | ${md(h.sensor_version)} |`, `| Tags | ${list(h.tags)} |`, `| Containment | ${md(h.containment_status)} |`, `| Error | ${md(h.error)} |`].join("\n") : "_Not available._",
-  ].join("\n");
-}
-
-function investigationSection(i: Record<string, any> | null) {
-  if (!i) return "## Investigation\n_No investigation section was provided._";
-  const f = arr(i.findings).map((x) => `- **[${md(x.severity)}] ${md(x.check)}:** ${md(x.finding)}${arr(x.evidence).length ? `\n  - Evidence: \`${JSON.stringify(x.evidence).slice(0, 1500).replace(/`/g, "'")}\`` : ""}`);
-  return ["## Investigation", `**Verdict:** ${md(i.verdict)}  `, `**Risk score:** ${md(i.risk_score)}  `, `**Code version:** ${md(i.code_version)}`,
-    i.confirmation_question ? `\n**Confirmation question:** ${md(i.confirmation_question)}` : "", "", "**Findings**", "", ...(f.length ? f : ["_None._"])].join("\n");
-}
-
-function traceSection(trace: any[]) {
-  const rows = trace.map((t) => `| ${md(t.component)} | ${md(t.decision)} | ${md(t.duration_ms)} | ${md(t.error)} |`);
-  return ["## Automation trace", "| Component | Decision | ms | Error |\n|---|---|---|---|", ...rows].join("\n");
-}
 
 const traceHasError = (trace: any[]) => trace.some((t) => t && t.error);
 const caseName = (rec: Record<string, any>) => `[${rec.alert.severity.toUpperCase()}] ${rec.alert.title}`.slice(0, 250);
@@ -183,7 +126,7 @@ function caseActionMetadata(t: ReturnType<typeof actionTargets>) {
 }
 
 // Picks buttons by alert source: Sentinel (sign-in) → Okta actions, CrowdStrike → CrowdStrike actions.
-// Every case gets Create Slack Channel. A source action is only offered when its target metadata exists.
+// Every case gets Create Slack Channel and AI Summary (known-good cases get AI Summary only). A source action is only offered when its target metadata exists.
 function selectCaseActions(rec: Record<string, any>, t: ReturnType<typeof actionTargets>) {
   const labels: string[] = [];
   if (rec.alert.source === "sentinel" && t.email) labels.push("Get User Details", "Revoke Sessions", "Force Password Reset", "Suspend User");
@@ -191,7 +134,7 @@ function selectCaseActions(rec: Record<string, any>, t: ReturnType<typeof action
     labels.push("Contain Host");
     if (t.processName || t.processId || t.sha256) labels.push("Kill Process");
   }
-  labels.push("Create Slack Channel");
+  labels.push("Create Slack Channel", "AI Summary");
   return labels;
 }
 
@@ -201,6 +144,21 @@ async function addCaseActions(ctx: Ctx, labels: string[]) {
       const r = await tines(`/api/v2/cases/${encodeURIComponent(ctx.caseOut.id!)}/actions`, "POST", { url: config.case_actions_webhook_url, label, action_type: "webhook", action_text: label });
       ctx.actions.push({ type: "case_action_added", ref: `${ctx.caseOut.id}#${label}#${r?.id ?? "unknown"}` });
     } catch (e) { fail(ctx, `add case action "${label}"`, e); }
+  }
+}
+
+// ---------- Case notes ----------
+// Tines note colors: white, gold, magenta, green, blue, red, mint, indigo. Investigation color follows the verdict.
+const NOTE_COLORS = { triage: "blue", enrichment: "indigo" } as const;
+const NOTE_MAX = 60_000;
+
+async function addCaseNotes(ctx: Ctx, notes: { title: string; content: string; color: string }[]) {
+  for (const [position, n] of notes.entries()) {
+    const content = n.content.length > NOTE_MAX ? `${n.content.slice(0, NOTE_MAX)}\n\n_…truncated._` : n.content;
+    try {
+      const r = await tines(`/api/v2/cases/${encodeURIComponent(ctx.caseOut.id!)}/notes`, "POST", { title: n.title, content, color: n.color, position });
+      ctx.actions.push({ type: "case_note_added", ref: `${ctx.caseOut.id}#${n.title}#${r?.id ?? "unknown"}` });
+    } catch (e) { fail(ctx, `add case note "${n.title}"`, e); }
   }
 }
 
@@ -231,9 +189,8 @@ async function dismissKnownGood(ctx: Ctx) {
   const rec = ctx.rec;
   const entry = rec.triage.matched_allowlist_entry ?? null;
   const description = [
-    `Automatically closed: alert matched a known-good entry during triage.`, "",
-    "## Matched allowlist entry", "```json", JSON.stringify(entry, null, 2), "```", "",
-    triageSection(rec.triage), "", alertSection(rec), "", traceSection(rec.trace),
+    "_Automatically closed: alert matched a known-good entry during triage._", "",
+    alertSection(rec), "", traceSection(rec.trace),
   ].join("\n");
   try {
     const now = new Date().toISOString();
@@ -247,6 +204,10 @@ async function dismissKnownGood(ctx: Ctx) {
     ctx.caseOut.status = ctx.caseOut.status ?? "closed";
     ctx.actions.push({ type: "case_created", ref: ctx.caseOut.id! });
   } catch (e) { fail(ctx, "create known-good case", e); }
+  if (ctx.caseOut.id) {
+    await addCaseNotes(ctx, [{ title: "Triage", content: triageNote(rec.triage), color: NOTE_COLORS.triage }]);
+    await addCaseActions(ctx, ["AI Summary"]);
+  }
   try {
     const who = rec.alert.user?.upn ?? rec.alert.host?.hostname ?? "unknown";
     const caseTxt = ctx.caseOut.url ? `<${ctx.caseOut.url}|case ${ctx.caseOut.id}>` : "no case (creation failed)";
@@ -263,10 +224,7 @@ async function investigate(ctx: Ctx) {
   const hasErr = traceHasError(rec.trace);
   const tags = [`dedup:${rec.dedup_key}`, `source:${rec.alert.source}`, `severity:${rec.alert.severity}`, `verdict:${verdict}`];
   if (hasErr) tags.push("automation-error");
-  const description = [
-    `Correlation ID: \`${rec.correlation_id}\``, rec.alert.source_url ? `Source alert: [${rec.alert.source_url}](${rec.alert.source_url})` : "", "",
-    triageSection(rec.triage), "", enrichmentSection(rec.enrichment ?? null), "", investigationSection(inv), "", alertSection(rec), "", traceSection(rec.trace),
-  ].join("\n");
+  const description = [alertSection(rec), "", traceSection(rec.trace)].join("\n");
 
   const targets = actionTargets(rec);
   try {
@@ -279,6 +237,11 @@ async function investigate(ctx: Ctx) {
   } catch (e) { fail(ctx, "create case", e); }
 
   if (ctx.caseOut.id) {
+    await addCaseNotes(ctx, [
+      { title: "Triage", content: triageNote(rec.triage), color: NOTE_COLORS.triage },
+      { title: "Enrichment", content: enrichmentNote(rec.enrichment ?? null), color: NOTE_COLORS.enrichment },
+      { title: `Investigation — ${String(inv?.verdict ?? "none").replace(/_/g, " ")}`, content: investigationNote(inv), color: investigationColor(inv) },
+    ]);
     const labels = selectCaseActions(rec, targets);
     log("case_actions_selected", { case_id: ctx.caseOut.id, labels });
     await addCaseActions(ctx, labels);
