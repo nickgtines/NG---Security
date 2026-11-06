@@ -83,6 +83,10 @@ const blocks = [
       },
     ],
   },
+  {
+    type: "context",
+    elements: [{ type: "mrkdwn", text: `Please answer within ${rec.timeout_minutes} minutes.` }],
+  },
 ];
 const msg = await slack(
   "chat.postMessage",

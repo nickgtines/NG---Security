@@ -29,8 +29,6 @@ export interface Reachout {
   sent_at?: string;
   outcome?: Answer | "user_not_found";
   closed_at?: string;
-  /** Set once the final-answer Case Note exists, so retries don't add a second one. */
-  note_created?: boolean;
 }
 
 export interface ResponseRecord {
@@ -116,24 +114,12 @@ export async function slack(method: string, body: Record<string, unknown>, cid: 
   return json;
 }
 
-/**
- * Normalize the connector-supplied Tines base URL. Tolerates malformed values such as
- * "https://https//tenant.tines.com" or "https//tenant.tines.com" by stripping every
- * leading scheme fragment and trailing slashes, then re-adding a single https://.
- */
-export function normalizeTinesBase(raw: string): string {
-  let rest = raw.trim();
-  const scheme = /^https?:?\/*/i;
-  while (scheme.test(rest) && rest.replace(scheme, "") !== rest) rest = rest.replace(scheme, "");
-  rest = rest.replace(/\/+$/, "");
-  if (!rest) throw new Error("TINES_URL has no hostname");
-  return `https://${rest}`;
-}
-
 export async function tines(method: string, path: string, cid: string, body?: unknown): Promise<any> {
   const base = process.env.TINES_URL;
   if (!base) throw new Error("TINES_URL is not set; attach the Tines connector to this step");
-  const res = await fetch(`${normalizeTinesBase(base)}${path}`, {
+  // Tolerate a connector base URL saved with a duplicated scheme (e.g. "https://https://host").
+  const normalized = base.trim().replace(/^(https?:\/\/)+/i, "https://").replace(/\/+$/, "");
+  const res = await fetch(`${normalized}${path}`, {
     method,
     headers: { "content-type": "application/json", accept: "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -149,17 +135,6 @@ export async function tines(method: string, path: string, cid: string, body?: un
 
 export async function commentOnCase(rec: Reachout, value: string) {
   await tines("POST", `/api/v2/cases/${encodeURIComponent(rec.case_id)}/comments`, rec.correlation_id, { value });
-}
-
-/** Tines case note colors accepted by the API. */
-export type NoteColor = "white" | "gold" | "magenta" | "green" | "blue" | "red" | "mint" | "indigo";
-
-export async function noteOnCase(rec: Reachout, title: string, content: string, color: NoteColor) {
-  await tines("POST", `/api/v2/cases/${encodeURIComponent(rec.case_id)}/notes`, rec.correlation_id, {
-    title,
-    content,
-    color,
-  });
 }
 
 export async function threadReply(rec: Reachout, text: string) {
