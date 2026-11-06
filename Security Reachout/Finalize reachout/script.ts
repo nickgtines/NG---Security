@@ -131,6 +131,21 @@ if (raw.trim()) {
       log(cid, "close_case_done", { case_id: closeCaseId, slack_user: user || null });
     }
     if (channel && ts) {
+      // Remove the Close Case button from the original message.
+      let msg: any = null;
+      try {
+        msg = JSON.parse(parseHttp(raw).body || "null");
+      } catch {
+        /* no message body forwarded */
+      }
+      if (Array.isArray(msg?.blocks) && msg.blocks.length) {
+        try {
+          await slack("chat.update", { channel, ts, text: msg.text || `Case ${closeCaseId}`, blocks: msg.blocks }, cid);
+          log(cid, "close_case_button_removed", { case_id: closeCaseId });
+        } catch (err) {
+          log(cid, "close_case_button_remove_failed", { case_id: closeCaseId, error: String(err) });
+        }
+      }
       await slack(
         "chat.postMessage",
         {

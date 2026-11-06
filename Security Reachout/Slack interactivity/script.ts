@@ -34,12 +34,22 @@ if (isCloseCase) {
     process.exit(0);
   }
   log(null, "close_case_requested", { case_id: caseId, clicker: payload.user?.id ?? null });
-  ack({
+  // The original message minus the Close Case button, so Finalize can update it in place.
+  const isCloseBtn = (el: any) =>
+    el?.action_id === "close_case" ||
+    (el?.type === "button" && String(el?.text?.text ?? "").trim().toLowerCase() === "close case");
+  const blocks = (Array.isArray(payload.message?.blocks) ? payload.message.blocks : [])
+    .map((b: any) => (b?.type === "actions" && Array.isArray(b.elements) ? { ...b, elements: b.elements.filter((e: any) => !isCloseBtn(e)) } : b))
+    .filter((b: any) => !(b?.type === "actions" && b.elements.length === 0))
+    .map((b: any) => (b?.type === "section" && isCloseBtn(b.accessory) ? (({ accessory, ...rest }) => rest)(b) : b));
+  const body = JSON.stringify({ text: String(payload.message?.text ?? ""), blocks });
+  process.stdout.write(httpResponse(200, "OK", body, {
+    "content-type": "application/json",
     "x-close-case-id": caseId,
     "x-slack-channel": /^[A-Z0-9]+$/.test(channel) ? channel : "",
     "x-slack-message-ts": /^\d+\.\d+$/.test(ts) ? ts : "",
     "x-slack-user": /^[A-Z0-9]+$/.test(payload.user?.id ?? "") ? payload.user.id : "",
-  });
+  }));
   process.exit(0);
 }
 const answer =
