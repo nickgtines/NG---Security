@@ -1,7 +1,6 @@
-import { readdirSync, statSync } from "node:fs";
 import {
-  Answer, CLOSED_DIR, ID_RE, NoteColor, OPEN_DIR, RESPONSES_DIR, Reachout, ResponseRecord, closeRecord, commentOnCase,
-  esc, log, noteOnCase, parseHttp, readJson, removeIfExists, slack, threadReply, tines, writeJson,
+  Answer, ID_RE, NoteColor, OPEN_DIR, RESPONSES_DIR, Reachout, ResponseRecord, closeRecord, commentOnCase,
+  esc, log, noteOnCase, parseHttp, readJson, slack, threadReply, tines, writeJson,
 } from "./lib.ts";
 
 const NOTE_TITLE: Record<Answer, string> = {
@@ -23,9 +22,6 @@ const TAG: Record<Answer, string> = {
   no_response: "user-no-response",
 };
 const PRIORITIES = ["info", "low", "medium", "high", "critical"];
-const SWEEP_BATCH = 25;
-const STUCK_RESPONSE_MS = 5 * 60_000;
-const CLOSED_RETENTION_MS = 30 * 24 * 60 * 60_000;
 // "Assign to Me" always assigns to this user.
 const ASSIGNEE_EMAIL = "ngilling@tines.io";
 
@@ -129,7 +125,7 @@ if (raw.trim()) {
       if (current.includes(ASSIGNEE_EMAIL)) {
         log(cid, "assign_case_already_assigned", { case_id: closeCaseId });
       } else {
-        await tines("PUT", path, cid, { assignee_emails: [ASSIGNEE_EMAIL] });
+        await tines("PUT", path, cid, { add_assignee_emails: [ASSIGNEE_EMAIL] });
         await tines("POST", `${path}/comments`, cid, {
           value: `**Case assigned from Slack**\n- **Assigned to:** ${ASSIGNEE_EMAIL}\n- **Clicked by:** ${user ? `Slack ${user}` : "unknown Slack user"}\n- **Time:** ${new Date().toISOString()}`,
         });
@@ -186,55 +182,4 @@ if (raw.trim()) {
     process.exit(0);
   }
   await finalize(rec, resp.answer, resp.responded_at);
-} else {
-  // Scheduled sweep: expire timed-out reachouts, retry stuck answers, prune old closed records.
-  const now = Date.now();
-  const ids = (() => {
-    try {
-      return readdirSync(OPEN_DIR).filter((f) => f.endsWith(".json")).map((f) => f.slice(0, -5)).filter((i) => ID_RE.test(i));
-    } catch {
-      return [] as string[];
-    }
-  })();
-  let handled = 0;
-  let failures = 0;
-  for (const id of ids) {
-    if (handled >= SWEEP_BATCH) break;
-    const rec = readJson<Reachout>(`${OPEN_DIR}/${id}.json`);
-    if (!rec) continue;
-    const resp = readJson<ResponseRecord>(`${RESPONSES_DIR}/${id}.json`);
-    try {
-      if (resp) {
-        if (now - Date.parse(resp.responded_at) < STUCK_RESPONSE_MS) continue; // click run is handling it
-        log(rec.correlation_id, "sweep_retry_answer", { reachout_id: id });
-        handled++;
-        await finalize(rec, resp.answer, resp.responded_at);
-      } else if (rec.status === "sent" && now > Date.parse(rec.deadline_at)) {
-        handled++;
-        await finalize(rec, "no_response", new Date().toISOString());
-      } else if (rec.status === "pending" && now - Date.parse(rec.created_at) > 15 * 60_000) {
-        // DM was never sent (Send DM failed). Record it instead of leaving it open forever.
-        handled++;
-        log(rec.correlation_id, "sweep_unsent_reachout", { reachout_id: id });
-        await commentOnCase(
-          rec,
-          `**Security reachout — failed**\n- **User:** ${rec.user_upn}\n- **Question:** ${rec.question}\n- **Time:** ${new Date().toISOString()}\n- **Reachout ID:** ${id}\n\nThe Slack DM could not be sent. Follow up manually.`,
-        );
-        closeRecord(rec, "no_response");
-      }
-    } catch (err) {
-      failures++;
-      log(rec.correlation_id, "sweep_finalize_failed", { reachout_id: id, error: String(err) });
-    }
-  }
-  try {
-    for (const f of readdirSync(CLOSED_DIR)) {
-      const p = `${CLOSED_DIR}/${f}`;
-      if (now - statSync(p).mtimeMs > CLOSED_RETENTION_MS) removeIfExists(p);
-    }
-  } catch {
-    /* closed/ does not exist yet */
-  }
-  if (handled || failures) log(null, "sweep_done", { open: ids.length, handled, failures });
-  if (failures) process.exit(1);
 }

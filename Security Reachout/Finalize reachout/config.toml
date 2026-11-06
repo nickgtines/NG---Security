@@ -1,4 +1,3 @@
 color = "green"
-cron = "* * * * *"
 connectors = [{ name = "tines-stories", type = "tines" }, { name = "ng-slack-security-bot", type = "slack" }]
 timeout = 240
