@@ -189,19 +189,19 @@ async function dismissKnownGood(ctx: Ctx) {
   const rec = ctx.rec;
   const entry = rec.triage.matched_allowlist_entry ?? null;
   const description = [
-    "_Automatically closed: alert matched a known-good entry during triage._", "",
+    "_Known-good: alert matched a known-good entry during triage. Opened at Info priority for review — close it once confirmed._", "",
     alertSection(rec), "", traceSection(rec.trace),
   ].join("\n");
   try {
-    const now = new Date().toISOString();
+    // Opened, not pre-closed: creating a closed case raced Tines' own opened_at and was rejected with HTTP 422.
     const c = await tines("/api/v2/cases", "POST", {
       team_id: config.tines_team_id, name: `Known-good: ${caseName(rec)}`.slice(0, 250), description,
-      priority: PRIORITY[rec.alert.severity], status: "closed", resolved_at: now,
+      priority: "info", status: "open",
       tag_names: ["known-good", `dedup:${rec.dedup_key}`, `source:${rec.alert.source}`, `severity:${rec.alert.severity}`],
       metadata: { correlation_id: rec.correlation_id, alert_id: rec.alert.id, allowlist_entry: JSON.stringify(entry).slice(0, 2000) },
     });
     ctx.caseOut = caseRef(c);
-    ctx.caseOut.status = ctx.caseOut.status ?? "closed";
+    ctx.caseOut.status = ctx.caseOut.status ?? "open";
     ctx.actions.push({ type: "case_created", ref: ctx.caseOut.id! });
   } catch (e) { fail(ctx, "create known-good case", e); }
   if (ctx.caseOut.id) {
@@ -209,10 +209,26 @@ async function dismissKnownGood(ctx: Ctx) {
     await addCaseActions(ctx, ["AI Summary"]);
   }
   try {
-    const who = rec.alert.user?.upn ?? rec.alert.host?.hostname ?? "unknown";
-    const caseTxt = ctx.caseOut.url ? `<${ctx.caseOut.url}|case ${ctx.caseOut.id}>` : "no case (creation failed)";
-    const msg = await slackPost({ channel: config.slack_log_channel, unfurl_links: false,
-      text: `:white_check_mark: Known-good dismissed: ${slackEsc(rec.alert.title)} (${slackEsc(who)}, ${rec.alert.severity}) — ${caseTxt} — correlation ${rec.correlation_id}` });
+    const a = rec.alert;
+    const who = a.user?.upn ?? a.host?.hostname ?? "unknown";
+    const caseTxt = ctx.caseOut.url ? `<${ctx.caseOut.url}|case ${ctx.caseOut.id}>` : `case ${ctx.caseOut.id}`;
+    const blocks: any[] = [
+      { type: "section", text: { type: "mrkdwn", text: `:white_check_mark: *Known-good alert:* ${slackEsc(a.title)} (${slackEsc(who)}, ${a.severity})`.slice(0, 2900) } },
+    ];
+    if (ctx.caseOut.id) {
+      blocks.push({ type: "section", text: { type: "mrkdwn", text: `:information_source: An *Info* priority ${caseTxt} was opened and stays open until someone closes it.`.slice(0, 2900) } });
+      const buttons: any[] = [];
+      if (ctx.caseOut.url) buttons.push({ type: "button", text: { type: "plain_text", text: "View case" }, url: ctx.caseOut.url, action_id: "view_case" });
+      // Interactive button (no url): Slack sends block_actions to the app's interactivity URL, handled in another workflow.
+      buttons.push({ type: "button", text: { type: "plain_text", text: "Close case" }, style: "danger", action_id: "close_case",
+        value: JSON.stringify({ case_id: ctx.caseOut.id, correlation_id: rec.correlation_id }) });
+      blocks.push({ type: "actions", elements: buttons });
+    } else {
+      blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: ":warning: Case creation failed — see the alert record." }] });
+    }
+    blocks.push({ type: "context", elements: [{ type: "mrkdwn", text: `${a.source} · ${slackEsc(a.rule_name)} · correlation ${rec.correlation_id}` }] });
+    const text = `Known-good alert: ${a.title} — ${ctx.caseOut.id ? `Info priority case ${ctx.caseOut.id} opened` : "case creation failed"}`;
+    const msg = await slackPost({ channel: config.slack_log_channel, unfurl_links: false, text, blocks });
     ctx.actions.push({ type: "slack_posted", ref: `${msg.channel}:${msg.ts}` });
   } catch (e) { fail(ctx, `post to ${config.slack_log_channel}`, e); }
 }
@@ -313,7 +329,7 @@ export async function respond(rec: Record<string, any>) {
   } catch (e) { fail(ctx, "unexpected", e); }
 
   const summary = ctx.actions.map((a) => a.type).join(", ") || "no actions";
-  const decision = disposition === "SUPPRESS_DUPLICATE" ? "commented_duplicate" : disposition === "DISMISS_KNOWN_GOOD" ? "closed_known_good" : "case_opened";
+  const decision = disposition === "SUPPRESS_DUPLICATE" ? "commented_duplicate" : disposition === "DISMISS_KNOWN_GOOD" ? "opened_known_good_info" : "case_opened";
   const traceEntry = {
     component: COMPONENT, decision: ctx.errors.length ? `${decision}_with_errors` : decision,
     reason: `${disposition}${rec.investigation?.verdict ? ` / ${rec.investigation.verdict}` : ""}: ${summary}.`,
