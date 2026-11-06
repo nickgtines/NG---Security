@@ -153,6 +153,57 @@ function caseRef(c: any) {
   return { id: String(c.case_id ?? c.id), url: c.url ?? null, status: c.status ? String(c.status).toLowerCase() : null };
 }
 
+// ---------- Case actions ----------
+// Metadata keys read by the "Tines case action handler" workflow: email/username (Okta),
+// hostname/host/device_id (CrowdStrike host), process_name/process_id/sha256 (CrowdStrike process).
+const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : typeof v === "number" ? String(v) : null);
+
+function actionTargets(rec: Record<string, any>) {
+  const a = rec.alert;
+  const email = str(a.user?.upn) ?? str(rec.enrichment?.user_context?.email);
+  const hostname = str(a.host?.hostname);
+  const deviceId = str(a.host?.device_id);
+  const proc = isObj(a.process) ? a.process : {};
+  const evProc = arr(a.evidence).find((e) => e?.type === "process")?.details ?? {};
+  const processName = str(proc.name) ?? str(proc.process_name) ?? str(evProc.process_name) ?? str(evProc.name);
+  const processId = str(proc.id) ?? str(proc.pid) ?? str(proc.process_id) ?? str(evProc.process_id) ?? str(evProc.pid);
+  const sha256 = str(proc.sha256) ?? str(evProc.sha256) ?? arr(a.iocs?.hashes).map(str).find((h) => h && /^[0-9a-f]{64}$/i.test(h)) ?? null;
+  return { email, hostname, deviceId, processName, processId, sha256 };
+}
+
+function caseActionMetadata(t: ReturnType<typeof actionTargets>) {
+  const m: Record<string, string> = {};
+  if (t.email) { m.email = t.email; m.username = t.email; }
+  if (t.hostname) { m.hostname = t.hostname; m.host = t.hostname; }
+  if (t.deviceId) m.device_id = t.deviceId;
+  if (t.processName) m.process_name = t.processName;
+  if (t.processId) m.process_id = t.processId;
+  if (t.sha256) m.sha256 = t.sha256;
+  return m;
+}
+
+// Picks buttons by alert source: Sentinel (sign-in) → Okta actions, CrowdStrike → CrowdStrike actions.
+// Every case gets Create Slack Channel. A source action is only offered when its target metadata exists.
+function selectCaseActions(rec: Record<string, any>, t: ReturnType<typeof actionTargets>) {
+  const labels: string[] = [];
+  if (rec.alert.source === "sentinel" && t.email) labels.push("Get User Details", "Revoke Sessions", "Force Password Reset", "Suspend User");
+  if (rec.alert.source === "crowdstrike" && (t.hostname || t.deviceId)) {
+    labels.push("Contain Host");
+    if (t.processName || t.processId || t.sha256) labels.push("Kill Process");
+  }
+  labels.push("Create Slack Channel");
+  return labels;
+}
+
+async function addCaseActions(ctx: Ctx, labels: string[]) {
+  for (const label of labels) {
+    try {
+      const r = await tines(`/api/v2/cases/${encodeURIComponent(ctx.caseOut.id!)}/actions`, "POST", { url: config.case_actions_webhook_url, label, action_type: "webhook", action_text: label });
+      ctx.actions.push({ type: "case_action_added", ref: `${ctx.caseOut.id}#${label}#${r?.id ?? "unknown"}` });
+    } catch (e) { fail(ctx, `add case action "${label}"`, e); }
+  }
+}
+
 // ---------- Behaviours ----------
 type Ctx = { rec: Record<string, any>; actions: { type: string; ref: string }[]; errors: string[]; caseOut: { id: string | null; url: string | null; status: string | null } };
 
@@ -217,14 +268,21 @@ async function investigate(ctx: Ctx) {
     triageSection(rec.triage), "", enrichmentSection(rec.enrichment ?? null), "", investigationSection(inv), "", alertSection(rec), "", traceSection(rec.trace),
   ].join("\n");
 
+  const targets = actionTargets(rec);
   try {
     const c = await tines("/api/v2/cases", "POST", {
       team_id: config.tines_team_id, name: caseName(rec), description, priority: PRIORITY[rec.alert.severity], status: "open", tag_names: tags,
-      metadata: { correlation_id: rec.correlation_id, alert_id: rec.alert.id, dedup_key: rec.dedup_key, source: rec.alert.source, source_url: rec.alert.source_url ?? "" },
+      metadata: { correlation_id: rec.correlation_id, alert_id: rec.alert.id, dedup_key: rec.dedup_key, source: rec.alert.source, source_url: rec.alert.source_url ?? "", ...caseActionMetadata(targets) },
     });
     ctx.caseOut = caseRef(c);
     ctx.actions.push({ type: "case_created", ref: ctx.caseOut.id! });
   } catch (e) { fail(ctx, "create case", e); }
+
+  if (ctx.caseOut.id) {
+    const labels = selectCaseActions(rec, targets);
+    log("case_actions_selected", { case_id: ctx.caseOut.id, labels });
+    await addCaseActions(ctx, labels);
+  }
 
   // Triage (Alert triage v3) searches cases by dedup tag directly; register in its dedup index only if configured.
   if (ctx.caseOut.id && config.triage_dedup_index_url) {
