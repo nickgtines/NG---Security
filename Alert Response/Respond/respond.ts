@@ -90,7 +90,7 @@ const SEV_EMOJI: Record<string, string> = { informational: ":white_circle:", low
 const FINDING_RANK: Record<string, number> = { high: 0, medium: 1, low: 2, info: 3 };
 
 const traceHasError = (trace: any[]) => trace.some((t) => t && t.error);
-const caseName = (rec: Record<string, any>) => `[${rec.alert.severity.toUpperCase()}] ${rec.alert.title}`.slice(0, 250);
+const caseName = (rec: Record<string, any>) => `[${rec.alert.severity.toUpperCase()}] ${rec.alert.title} - Hello World`.slice(0, 250);
 
 // Interactive "Assign to Me" button (no url): Slack sends block_actions to the app's interactivity URL,
 // where the handler assigns the case to the Slack user who clicked.
