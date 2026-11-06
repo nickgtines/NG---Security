@@ -1,6 +1,7 @@
 // Adds a case note describing the action taken, who took it, and the endpoint system's response.
 const { context: ctx, result } = JSON.parse(await Bun.stdin.text());
-const base = process.env.TINES_URL!.replace(/\/$/, "");
+// Normalize TINES_URL, tolerating a duplicated or missing scheme (e.g. "https://https//host").
+const base = "https://" + process.env.TINES_URL!.trim().replace(/^(https?:?\/*)+/i, "").replace(/\/+$/, "");
 
 const statusText = result.success ? "✅ Succeeded" : "❌ Failed";
 const content = [

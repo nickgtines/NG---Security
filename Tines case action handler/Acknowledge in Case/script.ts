@@ -1,6 +1,7 @@
 // Comments on the case that the action was initiated, then removes the clicked case action button.
 const ctx = JSON.parse(await Bun.stdin.text());
-const base = process.env.TINES_URL!.replace(/\/$/, "");
+// Normalize TINES_URL, tolerating a duplicated or missing scheme (e.g. "https://https//host").
+const base = "https://" + process.env.TINES_URL!.trim().replace(/^(https?:?\/*)+/i, "").replace(/\/+$/, "");
 const caseId = ctx.case.id;
 
 const commentRes = await fetch(`${base}/api/v2/cases/${caseId}/comments`, {
