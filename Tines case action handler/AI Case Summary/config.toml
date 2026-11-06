@@ -1,0 +1,3 @@
+color = "pink"
+connectors = [{ name = "tines-stories", type = "tines" }, { name = "anthropic-se-demos-please-only-use-this-one", type = "anthropic" }]
+timeout = 180

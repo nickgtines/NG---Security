@@ -11,6 +11,7 @@ Services **Case Actions** clicked in Tines Cases. A Tines case action of type `w
 | `Force Password Reset` | Okta Require Password Reset | Okta |
 | `Create Slack Channel` | Slack Create Channel | Slack |
 | `Get User Details` | Okta Get User Details | Okta (read-only) |
+| `AI Summary` | AI Case Summary | Anthropic (Claude) — summary + next steps note |
 
 Labels match case-insensitively. Unknown labels fail the run in the receiver without touching the case. To add an action: add its label to `ACTIONS` in `Receive Case Action/script.ts`, create a step that checks for the new action key, link it from **Acknowledge in Case**, and link it to **Record Result in Case**.
 

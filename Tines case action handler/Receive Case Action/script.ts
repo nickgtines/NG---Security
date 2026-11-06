@@ -9,6 +9,7 @@ const ACTIONS: Record<string, string> = {
   "force password reset": "okta_require_password_reset",
   "create slack channel": "slack_create_channel",
   "get user details": "okta_get_user_details",
+  "ai summary": "ai_case_summary",
 };
 
 const raw = await Bun.stdin.text();
